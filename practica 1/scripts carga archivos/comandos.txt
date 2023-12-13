@@ -1,0 +1,17 @@
+---- creacion de backup completo
+mysqldump -u root -p ht1bases2 > backup_completo_2.sql
+
+---- creacion back up incremental
+-- acceder a mysql 
+flush logs;
+
+show binary logs;
+
+purge binary logs before now();
+
+-- comandos
+mysqlbinlog "C:\ProgramData\MySQL\MySQL Server 8.0\Data\WORKSTATION-bin.000016" > backup_incremental_2.sql
+
+
+---- restaurar un backup
+mysql -u root -p ht1bases2 < backup_completo_2.sql
