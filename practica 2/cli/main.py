@@ -1,9 +1,11 @@
 import mysql.connector
+from datetime import datetime
 
 class HospitalCLI:
     def __init__(self):
         self.logged_in_user = None
         self.db_connection = None
+        self.logged_in_role = None
 
     def conectar_bd(self, username, password):
         try:
@@ -27,13 +29,17 @@ class HospitalCLI:
             if self.validar_credenciales(username, password):
                 print(f"Bienvenido, {username}! Sesión iniciada.")
                 self.logged_in_user = username
+                self.insertar_log("inicio sesion")
+                rol_usuario = self.obtener_rol(username)
+                print(f"Rol del usuario: {rol_usuario}")
+                self.logged_in_role = rol_usuario
                 self.menu_sesion_iniciada()
 
     def validar_credenciales(self, username, password):
         cursor = self.db_connection.cursor()
 
         # Consulta para verificar las credenciales en la base de datos
-        query = "SELECT * FROM Usuario WHERE username = %s AND password = %s"
+        query = "SELECT * FROM usuario WHERE usuario = %s AND contrasena = %s"
         cursor.execute(query, (username, password))
         user_data = cursor.fetchone()
 
@@ -232,7 +238,7 @@ class HospitalCLI:
             cursor = self.db_connection.cursor()
 
             # Verificar si el usuario administrador y la contraseña son correctos
-            query_admin = "SELECT * FROM usuarios WHERE username = %s"
+            query_admin = "SELECT * FROM usuario WHERE usuario = %s"
             cursor.execute(query_admin, (usuario_admin,))
             admin_data = cursor.fetchone()
 
@@ -240,13 +246,36 @@ class HospitalCLI:
                 print("Credenciales del administrador incorrectas. No se puede registrar el nuevo usuario.")
             else:
                 # Si las credenciales del administrador son correctas, registrar el nuevo usuario
-                insert_query = "INSERT INTO usuarios (username, password, rol) VALUES (%s, %s, %s)"
+                insert_query = "INSERT INTO usuario (usuario, contrasena, rol_codigo) VALUES (%s, %s, %s)"
                 cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_nuevo_usuario))
                 self.db_connection.commit()
                 print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
 
             cursor.close()
             self.db_connection.close()
+
+    def insertar_log(self, actividad):
+        cursor = self.db_connection.cursor()
+        fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Inserta un registro en la tabla de log
+        query = "INSERT INTO Log (usuario, actividad, fecha_hora) VALUES (%s, %s, %s)"
+        cursor.execute(query, (self.logged_in_user, actividad, fecha_actual))
+        self.db_connection.commit()
+
+        cursor.close()
+
+    def obtener_rol(self, username):
+        cursor = self.db_connection.cursor()
+
+        # Consulta para obtener el rol del usuario
+        query = "SELECT rol_codigo FROM usuario WHERE usuario = %s"
+        cursor.execute(query, (username,))
+        rol_usuario = cursor.fetchone()
+
+        cursor.close()
+
+        return rol_usuario[0] if rol_usuario else None
 
     def menu_principal(self):
         while True:
