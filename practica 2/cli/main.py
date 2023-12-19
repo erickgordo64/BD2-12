@@ -12,10 +12,10 @@ class HospitalCLI:
 
         try:
             self.db_connection = mysql.connector.connect(
-                host="tu_host",
+                host="localhost",
                 user=username,
                 password=password,
-                database="tu_base_de_datos"
+                database="practica1"
             )
             print(f"Bienvenido, {username}! Sesión iniciada.")
             self.logged_in_user = username
