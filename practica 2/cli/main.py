@@ -245,14 +245,31 @@ class HospitalCLI:
             if not admin_data:
                 print("Credenciales del administrador incorrectas. No se puede registrar el nuevo usuario.")
             else:
-                # Si las credenciales del administrador son correctas, registrar el nuevo usuario
-                insert_query = "INSERT INTO usuario (usuario, contrasena, rol_codigo) VALUES (%s, %s, %s)"
-                cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_nuevo_usuario))
-                self.db_connection.commit()
-                print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
+                 # Si las credenciales del administrador son correctas, obtener el código del rol
+                rol_codigo = self.obtener_codigo_rol(rol_nuevo_usuario)
+                if rol_codigo is not None:
+                    # Registrar el nuevo usuario con el código del rol obtenido
+                    insert_query = "INSERT INTO usuario (usuario, contrasena, rol_codigo) VALUES (%s, %s, %s)"
+                    cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_codigo))
+                    self.db_connection.commit()
+                    print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
+                else:
+                    print(f"Rol {rol_nuevo_usuario} no válido. No se puede registrar el nuevo usuario.")
 
             cursor.close()
             self.db_connection.close()
+
+    def obtener_codigo_rol(self, rol_nombre):
+        cursor = self.db_connection.cursor()
+
+        # Consulta para obtener el código del rol
+        query_rol = "SELECT codigo FROM rol WHERE rol = %s"
+        cursor.execute(query_rol, (rol_nombre,))
+        rol_codigo = cursor.fetchone()
+
+        cursor.close()
+
+        return rol_codigo[0] if rol_codigo else None
 
     def insertar_log(self, actividad):
         cursor = self.db_connection.cursor()
