@@ -5,44 +5,55 @@ class HospitalCLI:
         self.logged_in_user = None
         self.db_connection = None
 
+    def conectar_bd(self, username, password):
+        try:
+            self.db_connection = mysql.connector.connect(
+                host="tu_host",
+                user=username,
+                password=password,
+                database="tu_base_de_datos"
+            )
+            return True
+        except mysql.connector.Error as err:
+            print(f"Error al conectar con la base de datos: {err}")
+            return False
+
     def iniciar_sesion(self):
         print("*** INICIO DE SESION ***")
         username = input("INGRESE USUARIO: ")
         password = input("INGRESE CONTRASEÑA: ")
 
-        try:
-            self.db_connection = mysql.connector.connect(
-                host="localhost",
-                user=username,
-                password=password,
-                database="practica1"
-            )
+        if self.conectar_bd(username, password):
             print(f"Bienvenido, {username}! Sesión iniciada.")
             self.logged_in_user = username
-        except mysql.connector.Error as err:
-            print(f"Error al conectar con la base de datos: {err}")
-            self.db_connection = None
 
     def registrar_usuario(self):
-        cursor = self.db_connection.cursor()
-
         print("*** REGISTRO DE NUEVO USUARIO ***")
-        username = input("INGRESE UN NOMBRE DE USUARIO: ")
-        password = input("INGRESE UNA CONTRASEÑA: ")
+        nuevo_usuario = input("INGRESE NUEVO USUARIO: ")
+        nueva_contrasena = input("INGRESE CONTRASEÑA: ")
+        usuario_admin = input("INGRESE USUARIO ADMINISTRADOR: ")
+        contrasena_admin = input("INGRESE CONTRASEÑA ADMINISTRADOR: ")
+        rol_nuevo_usuario = input("INGRESE EL ROL DEL NUEVO USUARIO: ")
 
-        query = "SELECT * FROM usuarios WHERE username = %s"
-        cursor.execute(query, (username,))
-        existing_user = cursor.fetchone()
+        if self.conectar_bd(usuario_admin, contrasena_admin):
+            cursor = self.db_connection.cursor()
 
-        if existing_user:
-            print("El nombre de usuario ya está en uso. Por favor, elija otro.")
-        else:
-            insert_query = "INSERT INTO usuarios (username, password) VALUES (%s, %s)"
-            cursor.execute(insert_query, (username, password))
-            self.db_connection.commit()
-            print(f"Usuario {username} registrado exitosamente.")
+            # Verificar si el usuario administrador y la contraseña son correctos
+            query_admin = "SELECT * FROM usuarios WHERE username = %s"
+            cursor.execute(query_admin, (usuario_admin,))
+            admin_data = cursor.fetchone()
 
-        cursor.close()
+            if not admin_data:
+                print("Credenciales del administrador incorrectas. No se puede registrar el nuevo usuario.")
+            else:
+                # Si las credenciales del administrador son correctas, registrar el nuevo usuario
+                insert_query = "INSERT INTO usuarios (username, password, rol) VALUES (%s, %s, %s)"
+                cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_nuevo_usuario))
+                self.db_connection.commit()
+                print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
+
+            cursor.close()
+            self.db_connection.close()
 
     def menu_principal(self):
         while True:
@@ -68,3 +79,4 @@ class HospitalCLI:
 if __name__ == "__main__":
     hospital_cli = HospitalCLI()
     hospital_cli.menu_principal()
+
