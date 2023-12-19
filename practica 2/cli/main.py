@@ -26,34 +26,73 @@ class HospitalCLI:
         if self.conectar_bd(username, password):
             print(f"Bienvenido, {username}! Sesión iniciada.")
             self.logged_in_user = username
+            self.menu_sesion_iniciada()
 
-    def registrar_usuario(self):
-        print("*** REGISTRO DE NUEVO USUARIO ***")
-        nuevo_usuario = input("INGRESE NUEVO USUARIO: ")
-        nueva_contrasena = input("INGRESE CONTRASEÑA: ")
-        usuario_admin = input("INGRESE USUARIO ADMINISTRADOR: ")
-        contrasena_admin = input("INGRESE CONTRASEÑA ADMINISTRADOR: ")
-        rol_nuevo_usuario = input("INGRESE EL ROL DEL NUEVO USUARIO: ")
+    def menu_sesion_iniciada(self):
+        while True:
+            print(f"***** BIENVENIDO USUARIO: {self.logged_in_user} *****")
+            print("MENU:")
+            print("1. CONSULTAS")
+            print("2. ACTUALIZAR REGISTROS")
+            print("3. AGREGAR REGISTROS")
+            print("4. ELIMINAR REGISTROS")
+            print("5. REALIZAR RESPALDO COMPLETO")
+            print("6. VER RESPALDOS REALIZADOS")
+            print("7. RESTAURAR RESPALDO")
+            print("0. CERRAR SESION")
 
-        if self.conectar_bd(usuario_admin, contrasena_admin):
-            cursor = self.db_connection.cursor()
+            opcion = input("INGRESE UNA OPCION: ")
 
-            # Verificar si el usuario administrador y la contraseña son correctos
-            query_admin = "SELECT * FROM usuarios WHERE username = %s"
-            cursor.execute(query_admin, (usuario_admin,))
-            admin_data = cursor.fetchone()
-
-            if not admin_data:
-                print("Credenciales del administrador incorrectas. No se puede registrar el nuevo usuario.")
+            if opcion == "1":
+                self.actualizar_registros()
+            elif opcion == "2":
+                self.consultas()
+            elif opcion == "3":
+                self.agregar_registros()
+            elif opcion == "4":
+                self.eliminar_registros()
+            elif opcion == "5":
+                self.realizar_respaldo_completo()
+            elif opcion == "6":
+                self.ver_respaldos_realizados()
+            elif opcion == "7":
+                self.restaurar_respaldo()
+            elif opcion == "0":
+                print("Cerrando sesión. ¡Hasta luego!")
+                if self.db_connection:
+                    self.db_connection.close()
+                self.logged_in_user = None
+                break
             else:
-                # Si las credenciales del administrador son correctas, registrar el nuevo usuario
-                insert_query = "INSERT INTO usuarios (username, password, rol) VALUES (%s, %s, %s)"
-                cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_nuevo_usuario))
-                self.db_connection.commit()
-                print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
+                print("Opción no válida. Por favor, ingrese un número del 0 al 7.")
 
-            cursor.close()
-            self.db_connection.close()
+    def actualizar_registros(self):
+        # Implementa la lógica para actualizar registros
+        pass
+
+    def consultas(self):
+        # Implementa la lógica para consultas
+        pass
+
+    def agregar_registros(self):
+        # Implementa la lógica para agregar registros
+        pass
+
+    def eliminar_registros(self):
+        # Implementa la lógica para eliminar registros
+        pass
+
+    def realizar_respaldo_completo(self):
+        # Implementa la lógica para realizar un respaldo completo
+        pass
+
+    def ver_respaldos_realizados(self):
+        # Implementa la lógica para ver respaldos realizados
+        pass
+
+    def restaurar_respaldo(self):
+        # Implementa la lógica para restaurar un respaldo
+        pass
 
     def menu_principal(self):
         while True:
@@ -79,4 +118,3 @@ class HospitalCLI:
 if __name__ == "__main__":
     hospital_cli = HospitalCLI()
     hospital_cli.menu_principal()
-
