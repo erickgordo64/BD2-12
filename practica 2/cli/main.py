@@ -286,8 +286,8 @@ class HospitalCLI:
                 )
             elif rol == 'doctor':
                 grant_privileges_query = (
-                    "GRANT SELECT ON practica1.paciente TO '{usuario}'@'localhost',"
-                    "INSERT ON practica1.log TO '{usuario}'@'localhost'"
+                    "GRANT SELECT ON practica1.paciente TO '{usuario}'@'localhost';"
+                    "GRANT INSERT ON practica1.log TO '{usuario}'@'localhost';"
                 )
             elif rol == 'soporte':
                 grant_privileges_query = (
