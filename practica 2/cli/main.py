@@ -242,22 +242,75 @@ class HospitalCLI:
             cursor.execute(query_admin, (usuario_admin,))
             admin_data = cursor.fetchone()
 
-            if not admin_data:
-                print("Credenciales del administrador incorrectas. No se puede registrar el nuevo usuario.")
-            else:
-                 # Si las credenciales del administrador son correctas, obtener el código del rol
-                rol_codigo = self.obtener_codigo_rol(rol_nuevo_usuario)
-                if rol_codigo is not None:
-                    # Registrar el nuevo usuario con el código del rol obtenido
-                    insert_query = "INSERT INTO usuario (usuario, contrasena, rol_codigo) VALUES (%s, %s, %s)"
-                    cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_codigo))
-                    self.db_connection.commit()
-                    print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
+            rol_usuario = self.obtener_rol(usuario_admin)
+
+            if rol_usuario == 3:
+                if not admin_data:
+                    print("Credenciales del administrador incorrectas. No se puede registrar el nuevo usuario.")
                 else:
-                    print(f"Rol {rol_nuevo_usuario} no válido. No se puede registrar el nuevo usuario.")
+                    # Si las credenciales del administrador son correctas, obtener el código del rol
+                    rol_codigo = self.obtener_codigo_rol(rol_nuevo_usuario)
+                    self.logged_in_user = usuario_admin
+                    if rol_codigo is not None:
+                        # Registrar el nuevo usuario con el código del rol obtenido
+                        insert_query = "INSERT INTO usuario (usuario, contrasena, rol_codigo) VALUES (%s, %s, %s)"
+                        cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_codigo))
+                        self.db_connection.commit()
+                        self.insertar_log("se registro un nuevo usuario en el sistema")
+                        print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
+
+                        # Crear el usuario en MySQL
+                        self.crear_usuario_mysql(nuevo_usuario, nueva_contrasena, rol_nuevo_usuario)
+                    else:
+                        print(f"Rol {rol_nuevo_usuario} no válido. No se puede registrar el nuevo usuario.")
+            else:
+                print("usted no es un usuario administrador no puede crear usuarios")
 
             cursor.close()
             self.db_connection.close()
+
+    def crear_usuario_mysql(self, usuario, contrasena, rol):
+        cursor = self.db_connection.cursor()
+
+        try:
+            # Ejemplo de consulta para crear un usuario en MySQL
+            create_user_query = f"CREATE USER '{usuario}'@'localhost' IDENTIFIED BY '{contrasena}'"
+            cursor.execute(create_user_query)
+
+            # Otorgar privilegios según el rol
+            if rol == 'asistente':
+                grant_privileges_query = (
+                    "GRANT SELECT ON practica1.habitacion TO '{usuario}'@'localhost',"
+                    "SELECT, UPDATE ON practica1.paciente TO '{usuario}'@'localhost',"
+                    "INSERT ON practica1.log TO '{usuario}'@'localhost'"
+                )
+            elif rol == 'doctor':
+                grant_privileges_query = (
+                    "GRANT SELECT ON practica1.paciente TO '{usuario}'@'localhost',"
+                    "INSERT ON practica1.log TO '{usuario}'@'localhost'"
+                )
+            elif rol == 'soporte':
+                grant_privileges_query = (
+                    "GRANT SELECT, UPDATE, INSERT ON practica1.log_actividad TO '{usuario}'@'localhost',"
+                    "SELECT, UPDATE, INSERT ON practica1.log_habitacion TO '{usuario}'@'localhost',"
+                    "INSERT ON practica1.log TO '{usuario}'@'localhost'"
+                )
+            elif rol == 'administrador':
+                grant_privileges_query = "GRANT ALL PRIVILEGES ON practica1.* TO '{usuario}'@'localhost'"
+            else:
+                print(f"Rol no reconocido. No se otorgan privilegios específicos.")
+
+            cursor.execute(grant_privileges_query)
+            self.db_connection.commit()
+
+            print(f"Usuario {usuario} creado exitosamente con privilegios para el rol {rol}.")
+
+        except Exception as e:
+            print(f"Error al crear usuario: {e}")
+
+        finally:
+            cursor.close()
+
 
     def obtener_codigo_rol(self, rol_nombre):
         cursor = self.db_connection.cursor()
