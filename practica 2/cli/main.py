@@ -324,7 +324,7 @@ class HospitalCLI:
                 cursor.close()
                 self.insertar_log("Select de respaldo realizado")
             elif opcion == 3:
-                numero_respaldo = input("Ingrese el numero de respaldo")
+                numero_respaldo = input("Ingrese el numero de respaldo: ")
                 query =f"SELECT nombre FROM respaldo where id = '{numero_respaldo}'"
                 cursor = self.db_connection.cursor()
                 cursor.execute(query)
@@ -335,8 +335,8 @@ class HospitalCLI:
                     'mysql',
                     '-u', 'root',
                     '-p',
-                    '--databases',"practica1",
-                    '<', nombre_respaldo
+                    "practica1",
+                    '<', nombre_respaldo[0]
                 ]
 
                 try:
