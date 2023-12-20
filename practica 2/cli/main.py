@@ -420,9 +420,9 @@ class HospitalCLI:
             # Otorgar privilegios según el rol
             if rol == 'asistente':
                 grant_privileges_query = (
-                    "GRANT SELECT ON practica1.habitacion TO '{usuario}'@'localhost',"
-                    "SELECT, UPDATE ON practica1.paciente TO '{usuario}'@'localhost',"
-                    "INSERT ON practica1.log TO '{usuario}'@'localhost'"
+                    "GRANT SELECT ON practica1.habitacion TO '{usuario}'@'localhost';"
+                    "GRANT SELECT, UPDATE ON practica1.paciente TO '{usuario}'@'localhost';"
+                    "GRANT INSERT ON practica1.log TO '{usuario}'@'localhost';"
                 )
             elif rol == 'doctor':
                 grant_privileges_query = (
@@ -431,12 +431,12 @@ class HospitalCLI:
                 )
             elif rol == 'soporte':
                 grant_privileges_query = (
-                    "GRANT SELECT, UPDATE, INSERT ON practica1.log_actividad TO '{usuario}'@'localhost',"
-                    "SELECT, UPDATE, INSERT ON practica1.log_habitacion TO '{usuario}'@'localhost',"
-                    "INSERT ON practica1.log TO '{usuario}'@'localhost'"
+                    "GRANT SELECT, UPDATE, INSERT ON practica1.log_actividad TO '{usuario}'@'localhost';"
+                    "GRANT SELECT, UPDATE, INSERT ON practica1.log_habitacion TO '{usuario}'@'localhost';"
+                    "GRANT INSERT ON practica1.log TO '{usuario}'@'localhost';"
                 )
             elif rol == 'administrador':
-                grant_privileges_query = "GRANT ALL PRIVILEGES ON practica1.* TO '{usuario}'@'localhost'"
+                grant_privileges_query = "GRANT ALL PRIVILEGES ON practica1.* TO '{usuario}'@'localhost';"
             else:
                 print(f"Rol no reconocido. No se otorgan privilegios específicos.")
 
