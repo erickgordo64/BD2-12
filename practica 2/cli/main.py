@@ -1,6 +1,7 @@
 import mysql.connector
 from datetime import datetime
-
+import subprocess
+import os
 class HospitalCLI:
     def __init__(self):
         self.logged_in_user = None
@@ -203,28 +204,134 @@ class HospitalCLI:
                 print("Opción no válida. Por favor, ingrese un número del 0 al 4.")
 
     def realizar_respaldo_completo(self):
-        # Implementa la lógica para realizar un respaldo completo
-        pass
+        self.Hacer_respaldo(1)
 
     def ver_respaldos_realizados(self):
-        # Implementa la lógica para ver respaldos realizados
-        pass
+        self.Hacer_respaldo(2)
 
     def restaurar_respaldo(self):
-        # Implementa la lógica para restaurar un respaldo
-        pass
+        self.Hacer_respaldo(3)
 
     def submenu_pacientes(self):
-        pass
-
+        self.validar_rol_permiso()
     def submenu_habitaciones(self):
-        pass
+        self.validar_rol_permiso()
 
     def submenu_log_actividad(self):
-        pass
+        self.validar_rol_permiso()
 
     def submenu_log_habitacion(self):
-       pass
+        self.validar_rol_permiso()
+
+    def validar_rol_permiso(self):
+        query = input ("Ingrese su query: ")
+        instruccion = query.split(" ", 1)
+        if self.logged_in_role !=3:
+            cursor = self.db_connection.cursor()
+            query_codigo = "SELECT codigo FROM Permisos where permiso = %s"
+            cursor.execute(query_codigo, (instruccion[0].lower()))
+            resultado_permiso = cursor.fetchone()
+            if resultado_permiso:
+                codigo_permiso = resultado_permiso[0]
+                consulta_validacion = "SELECT * FROM Rol_Permisos where rol_codigo = %d and permiso_codigo = %d"
+                cursor.execute(consulta_validacion, (self.logged_in_role,codigo_permiso))
+                resultado_validar = cursor.fetchone()
+                if resultado_validar:
+                    cursor.execute(query)
+                    self.db_connection.commit()
+                    print("Query ejecutado exitosamente")
+                    self.insertar_log("Instruccion realizada: " + instruccion[0])
+                else:
+                    print ("No cuenta con los permisos necesarios")
+                    self.insertar_log("No cuenta con permisos para realizar: " + instruccion[0])
+            else:
+                print("Permiso no encontrado ")
+            cursor.close()
+        else:
+            cursor = self.db_connection.cursor()
+            cursor.execute(query)
+            resultado = cursor.fetchone()
+            cursor.close()
+            print (resultado)
+            self.insertar_log("Instruccion realizada: " + instruccion[0])
+
+    def Hacer_respaldo (self, opcion):
+        if self.logged_in_role == 3:
+            if opcion == "1":
+                fecha_actual = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                archivo_respaldo = f"{fecha_actual}.sql"
+
+                # Construir el comando mysqldump
+                comando = [
+                    'mysqldump',
+                    '-u', "root",
+                    '-p' + "root",
+                    '--databases', "practica1",
+                    '--result-file', archivo_respaldo
+                ]
+                try:
+                    subprocess.run(comando, check=True)
+
+                    print(f"Respaldo completo de practica1 exitoso. Guardado en '{archivo_respaldo}'")
+                    ruta = os.getcwd() + '/'+archivo_respaldo
+                    query = "INSERT INTO respaldo (nombre, ruta) values (%s,%s)"
+                    cursor = self.db_connection.cursor()
+                    cursor.execute(query,archivo_respaldo,ruta)
+                    cursor.close()
+                    self.insertar_log("Respaldo realizado")
+
+                except subprocess.CalledProcessError as e:
+                    print(f"Error al realizar el respaldo: {e}")
+
+            elif opcion == "2":
+                query = "SELECT * FROM respaldo"
+                cursor = self.db_connection.cursor()
+                cursor.execute(query)
+                resultado = cursor.fetchone()
+                cursor.close()
+                print(resultado)
+                self.insertar_log("Select de respaldo realizado")
+            elif opcion == "3":
+                numero_respaldo = input("Ingrese el numero de respaldo")
+                query ="SELECT nombre FROM respaldo where id = %d"
+                cursor = self.db_connection.cursor()
+                cursor.execute(query,numero_respaldo)
+                nombre_respaldo = cursor.fetchone()
+                cursor.close()
+                self.delete_tablas()
+                comando = [
+                    'mysql',
+                    '-u', 'root',
+                    '-p' + 'root',
+                    '--databases',"practica1",
+                    '<', archivo_respaldo
+                ]
+
+                try:
+                    # Ejecutar el comando mysql para restaurar el respaldo
+                    subprocess.run(' '.join(comando), shell=True, check=True)
+
+                    print(f"Restauración del respaldo en practica1 exitosa.")
+                    self.insertar_log("restauracion de respaldo ejecutado")
+
+                except subprocess.CalledProcessError as e:
+                    print(f"Error al restaurar el respaldo: {e}")
+                self.insertar_log("restauracion de respaldo fallido")
+        else:
+            self.insertar_log("No cuenta con permisos para realizar respaldo")
+
+    def delete_tablas(self):
+        cursor = self.db_connection.cursor()
+        query="delete from log_actividad;"
+        query1="delete from log_habitacion;"
+        query2="delete from habitacion;"
+        query3="delete from paciente;"
+        cursor.execute(query)
+        cursor.execute(query1)
+        cursor.execute(query2)
+        cursor.execute(query3)
+        cursor.close()
+        self.insertar_log("eliminacion de tablas realizada")
 
     def registrar_usuario(self):
         print("*** REGISTRO DE NUEVO USUARIO ***")
