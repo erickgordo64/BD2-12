@@ -228,19 +228,41 @@ class HospitalCLI:
         instruccion = query.split(" ", 1)
         if self.logged_in_role !=3:
             cursor = self.db_connection.cursor()
-            query_codigo = "SELECT codigo FROM Permisos where permiso = %s"
-            cursor.execute(query_codigo, (instruccion[0].lower()))
+            
+            instrution = instruccion[0].lower()
+            
+            query_codigo = f"SELECT codigo FROM Permisos WHERE permiso = '{instrution}'"
+            
+            cursor.execute(query_codigo)
+            
             resultado_permiso = cursor.fetchone()
+           
             if resultado_permiso:
                 codigo_permiso = resultado_permiso[0]
-                consulta_validacion = "SELECT * FROM Rol_Permisos where rol_codigo = %d and permiso_codigo = %d"
-                cursor.execute(consulta_validacion, (self.logged_in_role,codigo_permiso))
+                
+                consulta_validacion = f"SELECT * FROM Rol_Permisos WHERE rol_codigo = '{self.logged_in_role}' AND permiso_codigo = '{codigo_permiso}'"
+
+                cursor.execute(consulta_validacion)
                 resultado_validar = cursor.fetchone()
+                
                 if resultado_validar:
-                    cursor.execute(query)
-                    self.db_connection.commit()
-                    print("Query ejecutado exitosamente")
-                    self.insertar_log("Instruccion realizada: " + instruccion[0])
+                    try:
+                        cursor.execute(query)
+
+                        resultados = cursor.fetchall()
+
+                        if resultados:
+                            for resultado in resultados:
+                                print(resultado)
+                        else:
+                            print("No se encontraron resultados.")
+
+                        self.db_connection.commit()
+                        print("Query ejecutado exitosamente")
+                        self.insertar_log("Instruccion realizada: " + instruccion[0])
+                    except Exception as e:
+                        print(f"Error al realizar consulta: {e}")
+                        self.insertar_log(e)
                 else:
                     print ("No cuenta con los permisos necesarios")
                     self.insertar_log("No cuenta con permisos para realizar: " + instruccion[0])
@@ -250,22 +272,27 @@ class HospitalCLI:
         else:
             cursor = self.db_connection.cursor()
             cursor.execute(query)
-            resultado = cursor.fetchone()
+            resultados = cursor.fetchall()
+
+            if resultados:
+                for resultado in resultados:
+                    print(resultado)
+            else:
+                print("No se encontraron resultados.")
             cursor.close()
-            print (resultado)
             self.insertar_log("Instruccion realizada: " + instruccion[0])
 
     def Hacer_respaldo (self, opcion):
         if self.logged_in_role == 3:
-            if opcion == "1":
-                fecha_actual = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            if opcion == 1:
+                fecha_actual = datetime.now().strftime("%Y%m%d_%H%M%S")
                 archivo_respaldo = f"{fecha_actual}.sql"
 
                 # Construir el comando mysqldump
                 comando = [
                     'mysqldump',
                     '-u', "root",
-                    '-p' + "root",
+                    '-p',
                     '--databases', "practica1",
                     '--result-file', archivo_respaldo
                 ]
@@ -274,37 +301,42 @@ class HospitalCLI:
 
                     print(f"Respaldo completo de practica1 exitoso. Guardado en '{archivo_respaldo}'")
                     ruta = os.getcwd() + '/'+archivo_respaldo
-                    query = "INSERT INTO respaldo (nombre, ruta) values (%s,%s)"
+                    query = f"INSERT INTO respaldo (nombre, ruta) values ('{archivo_respaldo}','{ruta}')"
                     cursor = self.db_connection.cursor()
-                    cursor.execute(query,archivo_respaldo,ruta)
+                    cursor.execute(query)
                     cursor.close()
                     self.insertar_log("Respaldo realizado")
 
                 except subprocess.CalledProcessError as e:
                     print(f"Error al realizar el respaldo: {e}")
 
-            elif opcion == "2":
+            elif opcion == 2:
                 query = "SELECT * FROM respaldo"
                 cursor = self.db_connection.cursor()
                 cursor.execute(query)
-                resultado = cursor.fetchone()
+                resultados = cursor.fetchall()
+                if resultados:
+                    for resultado in resultados:
+                        print(resultado)
+                else:
+                    print("No se encontraron resultados.")
+
                 cursor.close()
-                print(resultado)
                 self.insertar_log("Select de respaldo realizado")
-            elif opcion == "3":
+            elif opcion == 3:
                 numero_respaldo = input("Ingrese el numero de respaldo")
-                query ="SELECT nombre FROM respaldo where id = %d"
+                query =f"SELECT nombre FROM respaldo where id = '{numero_respaldo}'"
                 cursor = self.db_connection.cursor()
-                cursor.execute(query,numero_respaldo)
+                cursor.execute(query)
                 nombre_respaldo = cursor.fetchone()
                 cursor.close()
                 self.delete_tablas()
                 comando = [
                     'mysql',
                     '-u', 'root',
-                    '-p' + 'root',
+                    '-p',
                     '--databases',"practica1",
-                    '<', archivo_respaldo
+                    '<', nombre_respaldo
                 ]
 
                 try:
@@ -318,6 +350,7 @@ class HospitalCLI:
                     print(f"Error al restaurar el respaldo: {e}")
                 self.insertar_log("restauracion de respaldo fallido")
         else:
+            print(f"No cuenta con permisos para realizar respaldo")
             self.insertar_log("No cuenta con permisos para realizar respaldo")
 
     def delete_tablas(self):
