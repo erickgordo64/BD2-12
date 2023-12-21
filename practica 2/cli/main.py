@@ -40,13 +40,17 @@ class HospitalCLI:
         cursor = self.db_connection.cursor()
 
         # Consulta para verificar las credenciales en la base de datos
-        query = "SELECT * FROM usuario WHERE usuario = %s AND contrasena = %s"
-        cursor.execute(query, (username, password))
-        user_data = cursor.fetchone()
+        try:
+            query = "SELECT * FROM usuario WHERE usuario = %s AND contrasena = %s"
+            cursor.execute(query, (username, password))
+            user_data = cursor.fetchone()
 
-        cursor.close()
+            cursor.close()
 
-        return user_data is not None
+            return user_data is not None
+        except Exception as e:
+            print(f"Error al realizar consulta: {e}")
+            self.insertar_log(e)
 
 
     def menu_sesion_iniciada(self):
@@ -230,57 +234,72 @@ class HospitalCLI:
             cursor = self.db_connection.cursor()
             
             instrution = instruccion[0].lower()
+            try:
             
-            query_codigo = f"SELECT codigo FROM Permisos WHERE permiso = '{instrution}'"
-            
-            cursor.execute(query_codigo)
-            
-            resultado_permiso = cursor.fetchone()
-           
-            if resultado_permiso:
-                codigo_permiso = resultado_permiso[0]
+                query_codigo = f"SELECT codigo FROM Permisos WHERE permiso = '{instrution}'"
                 
-                consulta_validacion = f"SELECT * FROM Rol_Permisos WHERE rol_codigo = '{self.logged_in_role}' AND permiso_codigo = '{codigo_permiso}'"
-
-                cursor.execute(consulta_validacion)
-                resultado_validar = cursor.fetchone()
+                cursor.execute(query_codigo)
                 
-                if resultado_validar:
+                resultado_permiso = cursor.fetchone()
+            
+                if resultado_permiso:
+                    codigo_permiso = resultado_permiso[0]
+                    
                     try:
-                        cursor.execute(query)
 
-                        resultados = cursor.fetchall()
+                        consulta_validacion = f"SELECT * FROM Rol_Permisos WHERE rol_codigo = '{self.logged_in_role}' AND permiso_codigo = '{codigo_permiso}'"
 
-                        if resultados:
-                            for resultado in resultados:
-                                print(resultado)
+                        cursor.execute(consulta_validacion)
+                        resultado_validar = cursor.fetchone()
+                        
+                        if resultado_validar:
+                            try:
+                                cursor.execute(query)
+
+                                resultados = cursor.fetchall()
+
+                                if resultados:
+                                    for resultado in resultados:
+                                        print(resultado)
+                                else:
+                                    print("No se encontraron resultados.")
+
+                                self.db_connection.commit()
+                                print("Query ejecutado exitosamente")
+                                self.insertar_log("Instruccion realizada: " + instruccion[0])
+                            except Exception as e:
+                                print(f"Error al realizar consulta: {e}")
+                                self.insertar_log(e)
                         else:
-                            print("No se encontraron resultados.")
+                            print ("No cuenta con los permisos necesarios")
+                            self.insertar_log("No cuenta con permisos para realizar: " + instruccion[0])
 
-                        self.db_connection.commit()
-                        print("Query ejecutado exitosamente")
-                        self.insertar_log("Instruccion realizada: " + instruccion[0])
                     except Exception as e:
                         print(f"Error al realizar consulta: {e}")
                         self.insertar_log(e)
                 else:
-                    print ("No cuenta con los permisos necesarios")
-                    self.insertar_log("No cuenta con permisos para realizar: " + instruccion[0])
-            else:
-                print("Permiso no encontrado ")
-            cursor.close()
+                    print("Permiso no encontrado ")
+                cursor.close()
+            except Exception as e:
+                    print(f"Error al realizar consulta: {e}")
+                    self.insertar_log(e)
         else:
-            cursor = self.db_connection.cursor()
-            cursor.execute(query)
-            resultados = cursor.fetchall()
+            try:
 
-            if resultados:
-                for resultado in resultados:
-                    print(resultado)
-            else:
-                print("No se encontraron resultados.")
-            cursor.close()
-            self.insertar_log("Instruccion realizada: " + instruccion[0])
+                cursor = self.db_connection.cursor()
+                cursor.execute(query)
+                resultados = cursor.fetchall()
+
+                if resultados:
+                    for resultado in resultados:
+                        print(resultado)
+                else:
+                    print("No se encontraron resultados.")
+                cursor.close()
+                self.insertar_log("Instruccion realizada: " + instruccion[0])
+            except Exception as e:
+                print(f"Error al realizar consulta: {e}")
+                self.insertar_log(e)
 
     def Hacer_respaldo (self, opcion):
         if self.logged_in_role == 3:
@@ -311,60 +330,72 @@ class HospitalCLI:
                     print(f"Error al realizar el respaldo: {e}")
 
             elif opcion == 2:
-                query = "SELECT * FROM respaldo"
-                cursor = self.db_connection.cursor()
-                cursor.execute(query)
-                resultados = cursor.fetchall()
-                if resultados:
-                    for resultado in resultados:
-                        print(resultado)
-                else:
-                    print("No se encontraron resultados.")
-
-                cursor.close()
-                self.insertar_log("Select de respaldo realizado")
-            elif opcion == 3:
-                numero_respaldo = input("Ingrese el numero de respaldo: ")
-                query =f"SELECT nombre FROM respaldo where id = '{numero_respaldo}'"
-                cursor = self.db_connection.cursor()
-                cursor.execute(query)
-                nombre_respaldo = cursor.fetchone()
-                cursor.close()
-                self.delete_tablas()
-                comando = [
-                    'mysql',
-                    '-u', 'root',
-                    '-p',
-                    "practica1",
-                    '<', nombre_respaldo[0]
-                ]
-
                 try:
-                    # Ejecutar el comando mysql para restaurar el respaldo
-                    subprocess.run(' '.join(comando), shell=True, check=True)
+                    query = "SELECT * FROM respaldo"
+                    cursor = self.db_connection.cursor()
+                    cursor.execute(query)
+                    resultados = cursor.fetchall()
+                    if resultados:
+                        for resultado in resultados:
+                            print(resultado)
+                    else:
+                        print("No se encontraron resultados.")
 
-                    print(f"Restauración del respaldo en practica1 exitosa.")
-                    self.insertar_log("restauracion de respaldo ejecutado")
+                    cursor.close()
+                    self.insertar_log("Select de respaldo realizado")
+                except Exception as e:
+                    print(f"Error al realizar consulta: {e}")
+                    self.insertar_log(e)
+            elif opcion == 3:
+                try:
+                    numero_respaldo = input("Ingrese el numero de respaldo: ")
+                    query =f"SELECT nombre FROM respaldo where id = '{numero_respaldo}'"
+                    cursor = self.db_connection.cursor()
+                    cursor.execute(query)
+                    nombre_respaldo = cursor.fetchone()
+                    cursor.close()
+                    self.delete_tablas()
+                    comando = [
+                        'mysql',
+                        '-u', 'root',
+                        '-p',
+                        "practica1",
+                        '<', nombre_respaldo[0]
+                    ]
 
-                except subprocess.CalledProcessError as e:
-                    print(f"Error al restaurar el respaldo: {e}")
-                self.insertar_log("restauracion de respaldo fallido")
+                    try:
+                        # Ejecutar el comando mysql para restaurar el respaldo
+                        subprocess.run(' '.join(comando), shell=True, check=True)
+
+                        print(f"Restauración del respaldo en practica1 exitosa.")
+                        self.insertar_log("restauracion de respaldo ejecutado")
+
+                    except subprocess.CalledProcessError as e:
+                        print(f"Error al restaurar el respaldo: {e}")
+                    self.insertar_log("restauracion de respaldo fallido")
+                except Exception as e:
+                    print(f"Error al realizar consulta: {e}")
+                    self.insertar_log(e)
         else:
             print(f"No cuenta con permisos para realizar respaldo")
             self.insertar_log("No cuenta con permisos para realizar respaldo")
 
     def delete_tablas(self):
-        cursor = self.db_connection.cursor()
-        query="delete from log_actividad;"
-        query1="delete from log_habitacion;"
-        query2="delete from habitacion;"
-        query3="delete from paciente;"
-        cursor.execute(query)
-        cursor.execute(query1)
-        cursor.execute(query2)
-        cursor.execute(query3)
-        cursor.close()
-        self.insertar_log("eliminacion de tablas realizada")
+        try:
+            cursor = self.db_connection.cursor()
+            query="delete from log_actividad;"
+            query1="delete from log_habitacion;"
+            query2="delete from habitacion;"
+            query3="delete from paciente;"
+            cursor.execute(query)
+            cursor.execute(query1)
+            cursor.execute(query2)
+            cursor.execute(query3)
+            cursor.close()
+            self.insertar_log("eliminacion de tablas realizada")
+        except Exception as e:
+            print(f"Error al realizar consulta: {e}")
+            self.insertar_log(e)
 
     def registrar_usuario(self):
         print("*** REGISTRO DE NUEVO USUARIO ***")
@@ -375,39 +406,43 @@ class HospitalCLI:
         rol_nuevo_usuario = input("INGRESE EL ROL DEL NUEVO USUARIO: ")
 
         if self.conectar_bd(usuario_admin, contrasena_admin):
-            cursor = self.db_connection.cursor()
+            try:
+                cursor = self.db_connection.cursor()
 
-            # Verificar si el usuario administrador y la contraseña son correctos
-            query_admin = "SELECT * FROM usuario WHERE usuario = %s"
-            cursor.execute(query_admin, (usuario_admin,))
-            admin_data = cursor.fetchone()
+                # Verificar si el usuario administrador y la contraseña son correctos
+                query_admin = "SELECT * FROM usuario WHERE usuario = %s"
+                cursor.execute(query_admin, (usuario_admin,))
+                admin_data = cursor.fetchone()
 
-            rol_usuario = self.obtener_rol(usuario_admin)
+                rol_usuario = self.obtener_rol(usuario_admin)
 
-            if rol_usuario == 3:
-                if not admin_data:
-                    print("Credenciales del administrador incorrectas. No se puede registrar el nuevo usuario.")
-                else:
-                    # Si las credenciales del administrador son correctas, obtener el código del rol
-                    rol_codigo = self.obtener_codigo_rol(rol_nuevo_usuario)
-                    self.logged_in_user = usuario_admin
-                    if rol_codigo is not None:
-                        # Registrar el nuevo usuario con el código del rol obtenido
-                        insert_query = "INSERT INTO usuario (usuario, contrasena, rol_codigo) VALUES (%s, %s, %s)"
-                        cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_codigo))
-                        self.db_connection.commit()
-                        self.insertar_log("se registro un nuevo usuario en el sistema")
-                        print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
-
-                        # Crear el usuario en MySQL
-                        self.crear_usuario_mysql(nuevo_usuario, nueva_contrasena, rol_nuevo_usuario)
+                if rol_usuario == 3:
+                    if not admin_data:
+                        print("Credenciales del administrador incorrectas. No se puede registrar el nuevo usuario.")
                     else:
-                        print(f"Rol {rol_nuevo_usuario} no válido. No se puede registrar el nuevo usuario.")
-            else:
-                print("usted no es un usuario administrador no puede crear usuarios")
+                        # Si las credenciales del administrador son correctas, obtener el código del rol
+                        rol_codigo = self.obtener_codigo_rol(rol_nuevo_usuario)
+                        self.logged_in_user = usuario_admin
+                        if rol_codigo is not None:
+                            # Registrar el nuevo usuario con el código del rol obtenido
+                            insert_query = "INSERT INTO usuario (usuario, contrasena, rol_codigo) VALUES (%s, %s, %s)"
+                            cursor.execute(insert_query, (nuevo_usuario, nueva_contrasena, rol_codigo))
+                            self.db_connection.commit()
+                            self.insertar_log("se registro un nuevo usuario en el sistema")
+                            print(f"Usuario {nuevo_usuario} registrado exitosamente como {rol_nuevo_usuario}.")
 
-            cursor.close()
-            self.db_connection.close()
+                            # Crear el usuario en MySQL
+                            self.crear_usuario_mysql(nuevo_usuario, nueva_contrasena, rol_nuevo_usuario)
+                        else:
+                            print(f"Rol {rol_nuevo_usuario} no válido. No se puede registrar el nuevo usuario.")
+                else:
+                    print("usted no es un usuario administrador no puede crear usuarios")
+
+                cursor.close()
+                self.db_connection.close()
+            except Exception as e:
+                print(f"Error al realizar consulta: {e}")
+                self.insertar_log(e)
 
     def crear_usuario_mysql(self, usuario, contrasena, rol):
         cursor = self.db_connection.cursor()
@@ -453,39 +488,51 @@ class HospitalCLI:
 
 
     def obtener_codigo_rol(self, rol_nombre):
-        cursor = self.db_connection.cursor()
+        try:
+            cursor = self.db_connection.cursor()
 
-        # Consulta para obtener el código del rol
-        query_rol = "SELECT codigo FROM rol WHERE rol = %s"
-        cursor.execute(query_rol, (rol_nombre,))
-        rol_codigo = cursor.fetchone()
+            # Consulta para obtener el código del rol
+            query_rol = "SELECT codigo FROM rol WHERE rol = %s"
+            cursor.execute(query_rol, (rol_nombre,))
+            rol_codigo = cursor.fetchone()
 
-        cursor.close()
+            cursor.close()
 
-        return rol_codigo[0] if rol_codigo else None
+            return rol_codigo[0] if rol_codigo else None
+        except Exception as e:
+            print(f"Error al realizar consulta: {e}")
+            self.insertar_log(e)
 
     def insertar_log(self, actividad):
-        cursor = self.db_connection.cursor()
-        fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try: 
+            cursor = self.db_connection.cursor()
+            fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Inserta un registro en la tabla de log
-        query = "INSERT INTO Log (usuario, actividad, fecha_hora) VALUES (%s, %s, %s)"
-        cursor.execute(query, (self.logged_in_user, actividad, fecha_actual))
-        self.db_connection.commit()
+            # Inserta un registro en la tabla de log
+            query = "INSERT INTO Log (usuario, actividad, fecha_hora) VALUES (%s, %s, %s)"
+            cursor.execute(query, (self.logged_in_user, actividad, fecha_actual))
+            self.db_connection.commit()
 
-        cursor.close()
+            cursor.close()
+        except Exception as e:
+            print(f"Error al realizar consulta: {e}")
+            self.insertar_log(e)
 
     def obtener_rol(self, username):
-        cursor = self.db_connection.cursor()
+        try: 
+            cursor = self.db_connection.cursor()
 
-        # Consulta para obtener el rol del usuario
-        query = "SELECT rol_codigo FROM usuario WHERE usuario = %s"
-        cursor.execute(query, (username,))
-        rol_usuario = cursor.fetchone()
+            # Consulta para obtener el rol del usuario
+            query = "SELECT rol_codigo FROM usuario WHERE usuario = %s"
+            cursor.execute(query, (username,))
+            rol_usuario = cursor.fetchone()
 
-        cursor.close()
+            cursor.close()
 
-        return rol_usuario[0] if rol_usuario else None
+            return rol_usuario[0] if rol_usuario else None
+        except Exception as e:
+            print(f"Error al realizar consulta: {e}")
+            self.insertar_log(e)
 
     def menu_principal(self):
         while True:
