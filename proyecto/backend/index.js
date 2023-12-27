@@ -33,7 +33,7 @@ app.use((req, res, next) => {
 app.use(bodyParser.json());
 
 // Rutas
-app.use('/api/auth', authRoutes);
+//app.use('/api/auth', authRoutes);
 // Otras rutas...
 
 app.listen(port, () => {
