@@ -1,12 +1,15 @@
 // Login.js
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../utils/api';
-import './style.css'; // Importa el archivo de estilos
+import './style.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     try {
@@ -15,9 +18,18 @@ const Login = () => {
         password,
       });
 
-      console.log('Respuesta del servidor:', response.data);
+      if (response.status === 200) {
+        // Almacena el username en localStorage o en algún estado global
+        const username = response.data.username;
+        localStorage.setItem('username', username);
+
+        // Redirige al perfil con el username en la URL
+        navigate(`/profile/${username}`);
+      } else {
+        setError('Credenciales incorrectas');
+      }
     } catch (error) {
-      console.error('Error al realizar la solicitud:', error);
+      setError('Error al realizar la solicitud');
     }
   };
 
@@ -44,6 +56,8 @@ const Login = () => {
         <button type="button" onClick={handleLogin} className="button">
           Iniciar Sesión
         </button>
+
+        {error && <p className="error-message">{error}</p>}
       </form>
     </div>
   );

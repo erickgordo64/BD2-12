@@ -50,19 +50,33 @@ app.post('/login', async (req, res) => {
 
     // Buscar al usuario por correo electrónico en Neo4j
     const result = await neo4jSession.run(
-      'MATCH (u:User {email: $email, password: $password}) RETURN u',
-      { email, password }
+      'MATCH (u:User {email: $email}) RETURN u',
+      { email }
     );
 
     const user = result.records[0]?.get('u');
 
-    // Verificar si el usuario existe
+    // Verificar si el usuario existe y comparar contraseñas
     if (user) {
-      // Usuario autenticado
-      res.status(200).json({ message: 'Inicio de sesión exitoso' });
+      const storedPassword = user.properties.password;
+
+      // Comparar la contraseña proporcionada con la almacenada
+      const passwordMatch = await bcrypt.compare(password, storedPassword);
+
+      if (passwordMatch) {
+        // Contraseña válida, usuario autenticado
+        const userData = {
+          username: user.properties.username,
+        };
+
+        res.status(200).json({ message: 'Inicio de sesión exitoso', user: userData });
+      } else {
+        // Contraseña incorrecta
+        res.status(401).json({ message: 'Credenciales incorrectas' });
+      }
     } else {
-      // Usuario no encontrado o contraseña incorrecta
-      res.status(401).json({ message: 'Credenciales incorrectas' });
+      // Usuario no encontrado
+      res.status(404).json({ message: 'Usuario no encontrado' });
     }
   } catch (error) {
     console.error('Error en la ruta /login:', error);
@@ -101,6 +115,61 @@ async function savePhotoToMongo(file) {
   //const result = await collection.insertOne({ file: file.path });
   const result = await collection.insertOne({ file: 'proyecto/backend/uploads/foto.jpeg' });
   return result.insertedId;
+}
+
+// Endpoint para obtener el perfil del usuario por username
+app.get('/profile/:username', async (req, res) => {
+  try {
+    const username = req.params.username;
+
+    // Buscar al usuario por username en Neo4j
+    const result = await neo4jSession.run(
+      'MATCH (u:User {username: $username}) RETURN u',
+      { username }
+    );
+
+    const user = result.records[0]?.get('u');
+
+    // Verificar si el usuario existe
+    if (user) {
+      const userProfile = {
+        username: user.properties.username,
+        // Obtener la URL de la foto desde MongoDB usando el photoId de Neo4j
+        photoUrl: await getPhotoUrl(user.properties.photoId),
+        // Puedes agregar más propiedades según sea necesario
+      };
+
+      res.status(200).json({ profile: userProfile });
+    } else {
+      // Usuario no encontrado
+      res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+  } catch (error) {
+    console.error('Error en la ruta /profile/:username:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Función para obtener la URL de la foto desde MongoDB
+async function getPhotoUrl(photoId) {
+  try {
+    // Conectar a MongoDB
+    await mongoClient.connect();
+    const db = mongoClient.db('proyecto'); // Reemplaza 'proyecto' con el nombre de tu base de datos MongoDB
+    const collection = db.collection('photos');
+
+    // Obtener la foto por ID
+    const photo = await collection.findOne({ _id: new ObjectId(photoId) });
+
+    // Devolver la URL de la foto
+    return photo ? photo.url : null;
+  } catch (error) {
+    console.error('Error al obtener la URL de la foto desde MongoDB:', error);
+    return null;
+  } finally {
+    // Cerrar la conexión a MongoDB
+    await mongoClient.close();
+  }
 }
 
 // Manejo de errores
