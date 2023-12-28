@@ -1,17 +1,17 @@
-import logo from './logo.svg';
 import './App.css';
-import React from 'react';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from './components/Login/Login';
+import Layout from './components/Layout/Layout';
+import Home from './pages/Home';
 
 function App() {
   return (
-    <Router>
-      <Switch>
-        <Route path="/login" component={Login} />
-        {/* Otras rutas y componentes */}
-      </Switch>
-    </Router>
+    <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Layout/>} />
+        <Route index element={<Home/>}/>
+    </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -1,14 +1,24 @@
 // Login.js
 import React, { useState } from 'react';
+import axios from 'axios';
+import { API_ENDPOINTS } from '../../utils/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    // Implementa la lógica de inicio de sesión aquí (por ejemplo, usando Axios)
-    console.log('Email:', email);
-    console.log('Contraseña:', password);
+    // Utiliza Axios para realizar la solicitud al endpoint de inicio de sesión
+    try {
+      const response = await axios.post(API_ENDPOINTS.LOGIN, {
+        email,
+        password,
+      });
+
+      console.log('Respuesta del servidor:', response.data);
+    } catch (error) {
+      console.error('Error al realizar la solicitud:', error);
+    }
   };
 
   return (

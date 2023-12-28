@@ -40,6 +40,44 @@ const upload = multer({ storage: storage });
 // Middleware para parsear el cuerpo de la solicitud como JSON
 app.use(express.json());
 
+
+// Endpoint para iniciar sesión
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Buscar al usuario por correo electrónico en Neo4j
+    const result = await neo4jSession.run(
+      'MATCH (u:User {email: $email}) RETURN u',
+      { email }
+    );
+
+    const user = result.records[0]?.get('u');
+
+    // Verificar si el usuario existe y comparar contraseñas
+    if (user) {
+      const storedPassword = user.properties.password;
+
+      // Comparar la contraseña proporcionada con la almacenada
+      const passwordMatch = await bcrypt.compare(password, storedPassword);
+
+      if (passwordMatch) {
+        // Contraseña válida, usuario autenticado
+        res.status(200).json({ message: 'Inicio de sesión exitoso' });
+      } else {
+        // Contraseña incorrecta
+        res.status(401).json({ message: 'Credenciales incorrectas' });
+      }
+    } else {
+      // Usuario no encontrado
+      res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+  } catch (error) {
+    console.error('Error en la ruta /login:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
 // Ruta para registrar un nuevo usuario
 app.post('/register', upload.single('photo'), async (req, res) => {
   const { username, email, age, specialty, password } = req.body;
