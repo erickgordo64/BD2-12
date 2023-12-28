@@ -542,7 +542,61 @@ app.get('/get-all-messages/:username1/:username2', async (req, res) => {
   }
 });
 
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+                                        //mongo//
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
+app.post('/uploadcsvmongo', upload.single('csvFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó un archivo CSV' });
+    }
+
+    const csvData = req.file.buffer.toString('utf-8');
+    const parsedData = await parseCsv(csvData);
+
+    await insertDataIntoMongoDB(parsedData);
+
+    res.status(200).json({ message: 'Archivo CSV de habitaciones cargado exitosamente' });
+  } catch (error) {
+    console.error('Error al procesar el archivo CSV:', error);
+    res.status(500).json({ error: 'Ocurrió un error al procesar el archivo CSV' });
+  }
+});
+
+const parseCsv = (csvData) => {
+  return new Promise((resolve, reject) => {
+    const parsedData = [];
+
+    require('stream')
+      .Readable.from(csvData.split('\n'))
+      .pipe(csvParser())
+      .on('data', (row) => {
+        parsedData.push(row);
+      })
+      .on('end', () => {
+        resolve(parsedData);
+      })
+      .on('error', (error) => {
+        reject(error);
+      });
+  });
+};
+
+const insertDataIntoMongoDB = async (data) => {
+  const collection = mongoDb.collection('habitaciones');
+
+  // Limpiar la colección antes de insertar nuevos datos (opcional)
+  await collection.deleteMany({});
+
+  // Insertar datos en MongoDB
+  await collection.insertMany(data);
+};
 
 // Manejo de errores
 app.use((err, req, res, next) => {
