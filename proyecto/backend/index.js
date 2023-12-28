@@ -3,9 +3,10 @@ const neo4j = require('neo4j-driver');
 const { MongoClient } = require('mongodb');
 const multer = require('multer');
 const path = require('path');
+const cors = require('cors'); // Agrega la librería cors
 
 const app = express();
-const port = 3000;
+const port = 4000;
 
 let neo4jDriver, neo4jSession, mongoDb;
 
@@ -37,6 +38,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+app.use(cors()); // Agrega CORS a todas las rutas
 // Middleware para parsear el cuerpo de la solicitud como JSON
 app.use(express.json());
 
@@ -48,29 +50,19 @@ app.post('/login', async (req, res) => {
 
     // Buscar al usuario por correo electrónico en Neo4j
     const result = await neo4jSession.run(
-      'MATCH (u:User {email: $email}) RETURN u',
-      { email }
+      'MATCH (u:User {email: $email, password: $password}) RETURN u',
+      { email, password }
     );
 
     const user = result.records[0]?.get('u');
 
-    // Verificar si el usuario existe y comparar contraseñas
+    // Verificar si el usuario existe
     if (user) {
-      const storedPassword = user.properties.password;
-
-      // Comparar la contraseña proporcionada con la almacenada
-      const passwordMatch = await bcrypt.compare(password, storedPassword);
-
-      if (passwordMatch) {
-        // Contraseña válida, usuario autenticado
-        res.status(200).json({ message: 'Inicio de sesión exitoso' });
-      } else {
-        // Contraseña incorrecta
-        res.status(401).json({ message: 'Credenciales incorrectas' });
-      }
+      // Usuario autenticado
+      res.status(200).json({ message: 'Inicio de sesión exitoso' });
     } else {
-      // Usuario no encontrado
-      res.status(404).json({ message: 'Usuario no encontrado' });
+      // Usuario no encontrado o contraseña incorrecta
+      res.status(401).json({ message: 'Credenciales incorrectas' });
     }
   } catch (error) {
     console.error('Error en la ruta /login:', error);

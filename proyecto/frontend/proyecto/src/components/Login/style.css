@@ -1,0 +1,36 @@
+/* style.css */
+.container {
+    width: 300px;
+    margin: auto;
+    margin-top: 50px;
+  }
+  
+  .heading {
+    text-align: center;
+    color: #333;
+  }
+  
+  .form {
+    display: flex;
+    flex-direction: column;
+    margin-top: 20px;
+  }
+  
+  .label {
+    margin: 5px 0;
+    color: #333;
+  }
+  
+  .input {
+    padding: 8px;
+    margin: 5px 0;
+  }
+  
+  .button {
+    background-color: #4caf50;
+    color: white;
+    padding: 10px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  

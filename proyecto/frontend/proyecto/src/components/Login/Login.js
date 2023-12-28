@@ -2,13 +2,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../utils/api';
+import './style.css'; // Importa el archivo de estilos
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    // Utiliza Axios para realizar la solicitud al endpoint de inicio de sesión
     try {
       const response = await axios.post(API_ENDPOINTS.LOGIN, {
         email,
@@ -22,16 +22,26 @@ const Login = () => {
   };
 
   return (
-    <div>
-      <h2>Iniciar Sesión</h2>
-      <form>
-        <label>Email:</label>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+    <div className="container">
+      <h2 className="heading">Iniciar Sesión</h2>
+      <form className="form">
+        <label className="label">Email:</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="input"
+        />
 
-        <label>Contraseña:</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <label className="label">Contraseña:</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="input"
+        />
 
-        <button type="button" onClick={handleLogin}>
+        <button type="button" onClick={handleLogin} className="button">
           Iniciar Sesión
         </button>
       </form>

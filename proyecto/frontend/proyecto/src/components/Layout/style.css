@@ -1,0 +1,31 @@
+/* Layout.css */
+
+.layout-container {
+    padding: 20px;
+  }
+  
+  .nav-bar {
+    background-color: #333;
+    color: white;
+    padding: 10px 0;
+  }
+  
+  .nav-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+  }
+  
+  .nav-item {
+    margin-right: 20px;
+  }
+  
+  .nav-link {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+  }
+  
+  .nav-link:hover {
+    text-decoration: underline;
+  }
