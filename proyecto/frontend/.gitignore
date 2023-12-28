@@ -1,0 +1,49 @@
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+# Dependencias de Node.js
+node_modules/
+
+# Archivo de bloqueo creado por `npm ci`
+package-lock.json
+
+# Dependencias creadas por `npm install`
+npm-debug.log
+
+# Dependencias creadas por `yarn add`
+yarn-error.log
+
+# Archivo .env (contiene variables de entorno, debe ser seguro)
+.env
+
+# Directorio de construcción (opcional, pero generalmente se ignora)
+build/
+
+# Dependencias locales (por ejemplo, si estás desarrollando un paquete npm)
+/local-dependency/
+
+# Logs y archivos temporales
+*.log
+*.pid
+*.seed
+*.pid.lock
+.DS_Store
+Thumbs.db
