@@ -1,41 +1,48 @@
-// app.js
 const express = require('express');
-const bodyParser = require('body-parser');
-const mongoose = require('mongoose');
 const neo4j = require('neo4j-driver');
-const authRoutes = require('./routes/auth');
 
 const app = express();
 const port = 3000;
 
-// Configuración de MongoDB
-mongoose.connect('mongodb://localhost:27017/tu_basedatos', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+// Conexión a Neo4j
+const driver = neo4j.driver('bolt://localhost:7687');
+const session = driver.session();
+
+// Middleware para parsear el cuerpo de la solicitud como JSON
+app.use(express.json());
+
+// Ruta para autenticar al usuario
+app.post('/auth', async (req, res) => {
+  const { email, password } = req.body;
+
+  // Ejemplo básico de consulta para verificar las credenciales
+  const result = await session.run(
+    'MATCH (u:User {email: $email, password: $password}) RETURN u',
+    { email, password }
+  );
+
+  const user = result.records[0]?.get('u');
+
+  if (user) {
+    res.status(200).json({ message: 'Autenticación exitosa', user });
+  } else {
+    res.status(401).json({ message: 'Credenciales incorrectas' });
+  }
 });
 
-const mongoDb = mongoose.connection;
-
-mongoDb.on('error', console.error.bind(console, 'Error de conexión a MongoDB:'));
-mongoDb.once('open', () => {
-  console.log('Conectado a MongoDB');
+// Manejo de errores
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Algo salió mal!');
 });
 
-// Configuración de Neo4j
-const neo4jDriver = neo4j.driver('bolt://localhost:7687', neo4j.auth.basic('neo4j', 'tu_contraseña'));
-
-// Middleware para pasar la instancia de Neo4j a las rutas
-app.use((req, res, next) => {
-  req.neo4jDriver = neo4jDriver;
-  next();
-});
-
-app.use(bodyParser.json());
-
-// Rutas
-//app.use('/api/auth', authRoutes);
-// Otras rutas...
-
+// Iniciar el servidor
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
+});
+
+// Cerrar la sesión de Neo4j al salir
+process.on('exit', () => {
+  session.close();
+  driver.close();
 });
