@@ -1,34 +1,77 @@
 const express = require('express');
 const neo4j = require('neo4j-driver');
+const { MongoClient } = require('mongodb');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 const port = 3000;
 
-// Conexión a Neo4j
-const driver = neo4j.driver('bolt://localhost:7687');
-const session = driver.session();
+let neo4jDriver, neo4jSession, mongoDb;
+
+// Conexión a Neo4j sin credenciales
+neo4jDriver = neo4j.driver('bolt://localhost:7687', neo4j.auth.basic('neo4j', 'root'));
+neo4jSession = neo4jDriver.session();
+
+// Conexión a MongoDB (reemplaza la URL con la de tu instancia de MongoDB)
+const mongoUrl = 'mongodb://localhost:27017';
+
+// Intentar conectar a MongoDB
+MongoClient.connect(mongoUrl, { useUnifiedTopology: true })
+  .then((client) => {
+    console.log('Conexión a MongoDB establecida');
+    mongoDb = client.db('proyecto'); // Reemplaza 'proyecto' con el nombre de tu base de datos MongoDB
+  })
+  .catch((err) => {
+    console.error('Error al conectar a MongoDB:', err);
+    process.exit(1); // Salir de la aplicación en caso de error de conexión a MongoDB
+  });
+
+// Configuración de multer para el manejo de archivos
+const storage = multer.diskStorage({
+  destination: './uploads/',
+  filename: function (req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage: storage });
 
 // Middleware para parsear el cuerpo de la solicitud como JSON
 app.use(express.json());
 
-// Ruta para autenticar al usuario
-app.post('/auth', async (req, res) => {
-  const { email, password } = req.body;
+// Ruta para registrar un nuevo usuario
+app.post('/register', upload.single('photo'), async (req, res) => {
+  const { username, email, age, specialty, password } = req.body;
 
-  // Ejemplo básico de consulta para verificar las credenciales
-  const result = await session.run(
-    'MATCH (u:User {email: $email, password: $password}) RETURN u',
-    { email, password }
+  // Guardar la foto en MongoDB y obtener el ID generado
+  const photoId = await savePhotoToMongo(req.file);
+  // Crear un nodo de usuario en Neo4j y relacionarlo con la foto almacenada en MongoDB
+  let photoIdMongo = photoId.toString()
+
+  const resultNeo4j = await neo4jSession.run(
+    `
+    CREATE (u:User {username: $username, email: $email, age: $age, specialty: $specialty, password: $password, photoId: $photoIdMongo})
+    RETURN u
+    `,
+    { username, email, age, specialty, password, photoIdMongo }
   );
+  const newUser = resultNeo4j.records[0]?.get('u');
 
-  const user = result.records[0]?.get('u');
-
-  if (user) {
-    res.status(200).json({ message: 'Autenticación exitosa', user });
+  if (newUser) {
+    res.status(200).json({ message: 'Usuario registrado exitosamente', user: newUser });
   } else {
-    res.status(401).json({ message: 'Credenciales incorrectas' });
+    res.status(500).json({ message: 'Error al registrar usuario' });
   }
 });
+
+// Función para guardar la foto en MongoDB y obtener el ID generado
+async function savePhotoToMongo(file) {
+  const collection = mongoDb.collection('photos'); // Reemplaza 'photos' con el nombre de tu colección
+  //const result = await collection.insertOne({ file: file.path });
+  const result = await collection.insertOne({ file: 'proyecto/backend/uploads/foto.jpeg' });
+  return result.insertedId;
+}
 
 // Manejo de errores
 app.use((err, req, res, next) => {
@@ -41,8 +84,11 @@ app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
 
-// Cerrar la sesión de Neo4j al salir
+// Cerrar las sesiones al salir
 process.on('exit', () => {
-  session.close();
-  driver.close();
+  neo4jSession.close();
+  neo4jDriver.close();
+  if (mongoDb) {
+    mongoDb.close();
+  }
 });
