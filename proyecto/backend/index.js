@@ -385,6 +385,165 @@ app.get('/get-friends/:username', async (req, res) => {
   }
 });
 
+app.post('/create-post', async (req, res) => {
+  const { username, content } = req.body;
+
+  try {
+    // Crea el post asociado al usuario en Neo4j
+    const createPostResult = await neo4jSession.run(
+      `
+      MATCH (user:User {username: $username})
+      CREATE (user)-[:POSTED_BY]->(post:Post {content: $content, timestamp: timestamp()})
+      RETURN post
+      `,
+      { username, content }
+    );
+
+    const createdPost = createPostResult.records[0]?.get('post');
+
+    if (createdPost) {
+      res.status(201).json({ message: 'Publicación creada con éxito.', post: createdPost.properties });
+    } else {
+      res.status(500).json({ message: 'Error al crear la publicación en Neo4j.' });
+    }
+  } catch (error) {
+    console.error('Error al crear la publicación en Neo4j:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+app.get('/get-user-posts/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    // Obtener los posts realizados por el usuario en Neo4j
+    const getUserPostsResult = await neo4jSession.run(
+      `
+      MATCH (user:User {username: $username})
+      OPTIONAL MATCH (user)-[:POSTED_BY]->(userPost:Post)
+      RETURN user.username AS username, COLLECT({ content: userPost.content, timestamp: userPost.timestamp }) AS userPosts
+      `,
+      { username }
+    );
+
+    // Obtener los amigos del usuario y sus posts en Neo4j
+    const getFriendPostsResult = await neo4jSession.run(
+      `
+      MATCH (user:User {username: $username})-[:FRIENDS_WITH]-(friend:User)
+      OPTIONAL MATCH (friend)-[:POSTED_BY]->(friendPost:Post)
+      RETURN friend.username AS friendUsername, COLLECT({ content: friendPost.content, timestamp: friendPost.timestamp }) AS friendPosts
+      `,
+      { username }
+    );
+
+    const userPosts = getUserPostsResult.records.map(record => {
+      const username = record.get('username');
+      const userPosts = record.get('userPosts') || [];
+      return { username, posts: userPosts };
+    });
+
+    const friendPosts = getFriendPostsResult.records.map(record => {
+      const friendUsername = record.get('friendUsername');
+      const friendPosts = record.get('friendPosts') || [];
+      return { username: friendUsername, posts: friendPosts };
+    });
+
+    res.status(200).json({ userPosts: userPosts.concat(friendPosts) });
+  } catch (error) {
+    console.error('Error al obtener los posts en Neo4j:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint para crear un mensaje en el chat
+app.post('/create-message', async (req, res) => {
+  const { senderUsername, receiverUsername, content } = req.body;
+
+  try {
+    // Verifica que ambos usuarios existan en Neo4j antes de crear el mensaje
+    const usersExistResult = await neo4jSession.run(
+      'MATCH (sender:User {username: $senderUsername}), (receiver:User {username: $receiverUsername}) RETURN sender, receiver',
+      { senderUsername, receiverUsername }
+    );
+
+    const sender = usersExistResult.records[0]?.get('sender');
+    const receiver = usersExistResult.records[0]?.get('receiver');
+
+    if (!sender || !receiver) {
+      return res.status(404).json({ message: 'Uno o ambos usuarios no encontrados.' });
+    }
+
+    // Crea el mensaje y la relación en Neo4j
+    const createMessageResult = await neo4jSession.run(
+      `
+      MATCH (sender:User {username: $senderUsername}), (receiver:User {username: $receiverUsername})
+      CREATE (message:Message {content: $content, timestamp: timestamp()})
+      MERGE (sender)-[:SENT]->(message)-[:TO]->(receiver)
+      RETURN message
+      `,
+      { senderUsername, receiverUsername, content }
+    );
+
+    const createdMessage = createMessageResult.records[0]?.get('message');
+
+    if (createdMessage) {
+      res.status(200).json({ message: 'Mensaje creado con éxito.', createdMessage });
+    } else {
+      res.status(500).json({ message: 'Error al crear el mensaje en Neo4j.' });
+    }
+  } catch (error) {
+    console.error('Error al crear el mensaje en Neo4j:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint para obtener todos los mensajes entre dos usuarios
+app.get('/get-all-messages/:username1/:username2', async (req, res) => {
+  const { username1, username2 } = req.params;
+
+  try {
+    // Verifica que ambos usuarios existan en Neo4j antes de buscar los mensajes
+    const usersExistResult = await neo4jSession.run(
+      'MATCH (user1:User {username: $username1}), (user2:User {username: $username2}) RETURN user1, user2',
+      { username1, username2 }
+    );
+
+    const user1 = usersExistResult.records[0]?.get('user1');
+    const user2 = usersExistResult.records[0]?.get('user2');
+
+    if (!user1 || !user2) {
+      return res.status(404).json({ message: 'Uno o ambos usuarios no encontrados.' });
+    }
+
+    // Recupera todos los mensajes enviados entre los dos usuarios (en ambas direcciones)
+    const getAllMessagesResult = await neo4jSession.run(
+      `
+      MATCH (user1:User {username: $username1})-[:SENT]->(message:Message)-[:TO]->(user2:User {username: $username2})
+      RETURN message.content AS content, message.timestamp AS timestamp, user1.username AS sender, user2.username AS receiver
+      UNION
+      MATCH (user1:User {username: $username2})-[:SENT]->(message:Message)-[:TO]->(user2:User {username: $username1})
+      RETURN message.content AS content, message.timestamp AS timestamp, user1.username AS sender, user2.username AS receiver
+      ORDER BY timestamp DESC
+      `,
+      { username1, username2 }
+    );
+
+    const messages = getAllMessagesResult.records.map(record => ({
+      content: record.get('content'),
+      timestamp: record.get('timestamp'),
+      sender: record.get('sender'),
+      receiver: record.get('receiver'),
+    }));
+
+    res.status(200).json({ messages });
+  } catch (error) {
+    console.error('Error al obtener los mensajes en Neo4j:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+
+
 // Manejo de errores
 app.use((err, req, res, next) => {
   console.error(err.stack);

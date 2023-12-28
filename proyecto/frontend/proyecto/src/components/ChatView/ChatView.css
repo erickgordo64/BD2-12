@@ -1,0 +1,29 @@
+/* ChatView.css */
+
+.chat-view-container {
+    max-width: 600px;
+    margin: auto;
+  }
+  
+  .message-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .message-item {
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #fff;
+  }
+  
+  .message-item p {
+    margin: 0;
+  }
+  
+  .message-item span {
+    display: block;
+    color: #888;
+    font-size: 0.8em;
+  }
+  

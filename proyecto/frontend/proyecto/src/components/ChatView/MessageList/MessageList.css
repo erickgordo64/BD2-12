@@ -1,0 +1,21 @@
+/* Puedes personalizar estos estilos según tus preferencias */
+.message-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .message-card {
+    background-color: #f5f5f5;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .message-time {
+    color: #888;
+    font-size: 12px;
+  }
+  

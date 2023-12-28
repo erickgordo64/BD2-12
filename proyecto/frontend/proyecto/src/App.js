@@ -9,6 +9,8 @@ import Home from './pages/Home'
 import Register from './components/Register/Register';
 import AddFriends from './components/AddFriend/AddFriends'
 import FriendList from './components/FriendsList/FriendsList';
+import PostView from './components/ViewPost/PostView';
+import ChatView from './components/ChatView/ChatView';
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/search" element={<AddFriends />} />
           <Route path="/friendlist" element={<FriendList />} />
+          <Route path="/viewpost" element={<PostView />} />
+          <Route path="/viewmessages" element={<ChatView />} />
         </Route>
       </Routes>
     </BrowserRouter>

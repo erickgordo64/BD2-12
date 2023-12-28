@@ -11,5 +11,8 @@ export const API_ENDPOINTS = {
   ADDFRIEND: `${BASE_URL}/add-friend`,
   GETFRIENDS:`${BASE_URL}/get-friends`,
   REMOVEFRIEND:`${BASE_URL}/remove-friend`,
+  GETUSERPOSTS:`${BASE_URL}/get-user-posts`,
+  GETALLMESSAGES:`${BASE_URL}/get-all-messages`,
+  CREATEMESSAGE:`${BASE_URL}/create-message`,
   // Agrega más endpoints según sea necesario
 };

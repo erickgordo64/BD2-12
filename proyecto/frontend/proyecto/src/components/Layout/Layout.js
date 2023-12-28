@@ -32,6 +32,12 @@ const Layout = () => {
                 <Link to={"/friendlist"} className="nav-link">Mis Amigos</Link>
               </li>
               <li className="nav-item">
+                <Link to={"/viewpost"} className="nav-link">Publicaciones</Link>
+              </li>
+              <li className="nav-item">
+                <Link to={"/viewmessages"} className="nav-link">Mensajes</Link>
+              </li>
+              <li className="nav-item">
                 <button onClick={handleLogout} className="logout-button">Logout</button>
               </li>
             </>
