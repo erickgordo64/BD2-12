@@ -19,18 +19,24 @@ const Login = () => {
       });
 
       if (response.status === 200) {
+        const userData = response.data.user;
         // Almacena el username en localStorage o en algún estado global
-        const username = response.data.username;
+        const username = userData.username;
         localStorage.setItem('username', username);
-
+        localStorage.setItem('authToken','111111111111111111111111')
         // Redirige al perfil con el username en la URL
-        navigate(`/profile/${username}`);
+        navigate(`/home`);
       } else {
         setError('Credenciales incorrectas');
       }
     } catch (error) {
       setError('Error al realizar la solicitud');
     }
+  };
+
+  const handleRegisterClick = () => {
+    // Redirige a la página de registro
+    navigate('/register');
   };
 
   return (
@@ -57,6 +63,9 @@ const Login = () => {
           Iniciar Sesión
         </button>
 
+        <button onClick={handleRegisterClick}>
+          Go to Register
+        </button>
         {error && <p className="error-message">{error}</p>}
       </form>
     </div>

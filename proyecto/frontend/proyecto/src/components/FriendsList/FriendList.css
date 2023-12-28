@@ -1,0 +1,51 @@
+/* FriendList.css */
+
+.friend-list-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+h2 {
+  color: #333;
+}
+
+.empty-message {
+  font-style: italic;
+  color: #777;
+}
+
+.friend-cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.friend-card {
+  border: 1px solid #ccc;
+  padding: 16px;
+  text-align: center;
+}
+
+.friend-photo {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 8px;
+}
+
+.friend-username {
+  font-weight: bold;
+}
+
+/* Estilos para el botón de eliminar */
+.friend-card button {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #ff0000; /* Rojo, puedes ajustar el color según tus preferencias */
+  color: #fff; /* Texto blanco para contrastar con el fondo rojo */
+  border: none;
+  cursor: pointer;
+}
+
+/* Ajusta según sea necesario */

@@ -1,6 +1,6 @@
 const express = require('express');
 const neo4j = require('neo4j-driver');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors'); // Agrega la librería cors
@@ -43,7 +43,7 @@ app.use(cors()); // Agrega CORS a todas las rutas
 app.use(express.json());
 
 
-// Endpoint para iniciar sesión
+// Endpoint para iniciar sesión sin cifrado de contraseñas
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -61,9 +61,7 @@ app.post('/login', async (req, res) => {
       const storedPassword = user.properties.password;
 
       // Comparar la contraseña proporcionada con la almacenada
-      const passwordMatch = await bcrypt.compare(password, storedPassword);
-
-      if (passwordMatch) {
+      if (password === storedPassword) {
         // Contraseña válida, usuario autenticado
         const userData = {
           username: user.properties.username,
@@ -84,12 +82,13 @@ app.post('/login', async (req, res) => {
   }
 });
 
+
 // Ruta para registrar un nuevo usuario
 app.post('/register', upload.single('photo'), async (req, res) => {
-  const { username, email, age, specialty, password } = req.body;
+  const { username, email, age, specialty, password, photo } = req.body;
 
   // Guardar la foto en MongoDB y obtener el ID generado
-  const photoId = await savePhotoToMongo(req.file);
+  const photoId = await savePhotoToMongo(photo);
   // Crear un nodo de usuario en Neo4j y relacionarlo con la foto almacenada en MongoDB
   let photoIdMongo = photoId.toString()
 
@@ -109,11 +108,59 @@ app.post('/register', upload.single('photo'), async (req, res) => {
   }
 });
 
+// Endpoint para actualizar los datos de un usuario en Neo4j y MongoDB
+app.put('/register', async (req, res) => {
+  try {
+    const { username, email, age, specialty, photoUrl } = req.body;
+
+    // Verificar si el usuario existe por nombre de usuario
+    const existingUser = await neo4jSession.run(
+      'MATCH (u:User {username: $username}) RETURN u',
+      { username }
+    );
+
+    const user = existingUser.records[0]?.get('u');
+
+    if (!user) {
+      res.status(404).json({ message: 'Usuario no encontrado' });
+      return;
+    }
+
+    let photoIdMongo = ''
+
+    // Actualizar la foto en MongoDB si se proporciona un nuevo photoId
+    if (photoUrl) {
+      console.log(photoUrl)
+      // Guardar la foto en MongoDB y obtener el ID generado
+      const photoId = await savePhotoToMongo(photoUrl);
+      // Crear un nodo de usuario en Neo4j y relacionarlo con la foto almacenada en MongoDB
+      photoIdMongo = photoId.toString()
+    }
+
+    // Actualizar los datos del usuario en Neo4j
+    const updateResult = await neo4jSession.run(
+      'MATCH (u:User {username: $username}) SET u.email = $email, u.age = $age, u.specialty = $specialty, u.photoId = $photoIdMongo RETURN u',
+      { username, email, age, specialty, photoIdMongo }
+    );
+
+    const updatedUser = updateResult.records[0]?.get('u');
+
+    if (updatedUser) {
+      res.status(200).json({ message: 'Datos del usuario actualizados', user: updatedUser.properties });
+    } else {
+      res.status(500).json({ message: 'Error al actualizar los datos del usuario en Neo4j' });
+    }
+  } catch (error) {
+    console.error('Error en la ruta update /register:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
 // Función para guardar la foto en MongoDB y obtener el ID generado
 async function savePhotoToMongo(file) {
   const collection = mongoDb.collection('photos'); // Reemplaza 'photos' con el nombre de tu colección
   //const result = await collection.insertOne({ file: file.path });
-  const result = await collection.insertOne({ file: 'proyecto/backend/uploads/foto.jpeg' });
+  const result = await collection.insertOne({ file: file });
   return result.insertedId;
 }
 
@@ -134,11 +181,12 @@ app.get('/profile/:username', async (req, res) => {
     if (user) {
       const userProfile = {
         username: user.properties.username,
-        // Obtener la URL de la foto desde MongoDB usando el photoId de Neo4j
+        email: user.properties.email,
+        age: user.properties.age,
+        specialty: user.properties.specialty,
+        // Agrega más propiedades según sea necesario
         photoUrl: await getPhotoUrl(user.properties.photoId),
-        // Puedes agregar más propiedades según sea necesario
       };
-
       res.status(200).json({ profile: userProfile });
     } else {
       // Usuario no encontrado
@@ -154,23 +202,188 @@ app.get('/profile/:username', async (req, res) => {
 async function getPhotoUrl(photoId) {
   try {
     // Conectar a MongoDB
-    await mongoClient.connect();
-    const db = mongoClient.db('proyecto'); // Reemplaza 'proyecto' con el nombre de tu base de datos MongoDB
-    const collection = db.collection('photos');
+    const collection = mongoDb.collection('photos');
 
     // Obtener la foto por ID
     const photo = await collection.findOne({ _id: new ObjectId(photoId) });
-
     // Devolver la URL de la foto
-    return photo ? photo.url : null;
+    return photo ? photo.file : null;
   } catch (error) {
     console.error('Error al obtener la URL de la foto desde MongoDB:', error);
     return null;
-  } finally {
-    // Cerrar la conexión a MongoDB
-    await mongoClient.close();
   }
 }
+
+// Endpoint para que un usuario agregue a otro como amigo en Neo4j
+app.post('/add-friend', async (req, res) => {
+  try {
+    const { currentUserUsername, friendUsername } = req.body;
+
+    // Verificar si los usuarios existen
+    const checkUsersResult = await neo4jSession.run(
+      'MATCH (requester:User {username: $currentUserUsername}), (friend:User {username: $friendUsername}) RETURN requester, friend',
+      { currentUserUsername, friendUsername }
+    );
+
+    const requester = checkUsersResult.records[0]?.get('requester');
+    const friend = checkUsersResult.records[0]?.get('friend');
+
+    if (!requester || !friend) {
+      res.status(404).json({ message: 'Usuario no encontrado' });
+      return;
+    }
+
+    // Verificar si ya son amigos
+    const checkFriendshipResult = await neo4jSession.run(
+      'MATCH (user1:User {username: $currentUserUsername})-[:FRIENDS_WITH]-(user2:User {username: $friendUsername}) RETURN EXISTS((user1)-[:FRIENDS_WITH]-(user2)) AS areFriends',
+      { currentUserUsername, friendUsername }
+    );
+
+    if (checkFriendshipResult.records != []) {
+      res.status(400).json({ message: 'Ya son amigos' });
+      return;
+    }
+
+    // Crear la relación de amistad en Neo4j
+    await neo4jSession.run(
+      'MATCH (requester:User {username: $currentUserUsername}), (friend:User {username: $friendUsername}) CREATE (requester)-[:FRIENDS_WITH]->(friend)',
+      { currentUserUsername, friendUsername }
+    );
+
+    res.status(200).json({ message: 'Amigo agregado exitosamente' });
+  } catch (error) {
+    console.error('Error en la ruta /add-friend/:username:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint para eliminar amistad
+app.post('/remove-friend', async (req, res) => {
+  const { currentUserUsername, friendUsername } = req.body;
+
+  try {
+    // Ejecuta la consulta para eliminar la relación de amistad
+    await neo4jSession.run(
+      'MATCH (user1:User {username: $user1})-[r:FRIENDS_WITH]->(user2:User {username: $user2}) ' +
+      'DELETE r',
+      { user1: currentUserUsername, user2: friendUsername }
+    );
+
+    res.json({ success: true, message: 'Amistad eliminada con éxito.' });
+  } catch (error) {
+    console.error('Error al eliminar la amistad en Neo4j:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint para buscar profesionales por especialidad en Neo4j
+app.get('/search-professionals-by-specialty/:specialty', async (req, res) => {
+  try {
+    const specialty = req.params.specialty;
+
+    // Realizar la búsqueda por especialidad de profesionales en Neo4j
+    const searchResult = await neo4jSession.run(
+      'MATCH (professional:User) ' +
+      'WHERE professional.specialty CONTAINS $specialty ' +
+      'RETURN professional.username, professional.email, professional.age, professional.specialty',
+      { specialty }
+    );
+
+    const professionals = searchResult.records.map(record => record.toObject());
+
+    res.status(200).json({ professionals });
+  } catch (error) {
+    console.error('Error en la ruta /search-professionals-by-specialty/:specialty:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint para buscar profesionales por nombre en Neo4j
+app.get('/search-professionals-by-name/:name', async (req, res) => {
+  try {
+    const name = req.params.name;
+
+    // Realizar la búsqueda por nombre de profesionales en Neo4j
+    const searchResult = await neo4jSession.run(
+      'MATCH (professional:User) ' +
+      'WHERE professional.username CONTAINS $name ' +
+      'RETURN professional.username, professional.email, professional.age, professional.specialty',
+      { name }
+    );
+
+    const professionals = searchResult.records.map(record => record.toObject());
+
+    res.status(200).json({ professionals });
+  } catch (error) {
+    console.error('Error en la ruta /search-professionals-by-name/:name:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint para buscar amigos en común en Neo4j
+app.get('/common-friends/:doctorUsername/:friendUsername', async (req, res) => {
+  try {
+    const doctorUsername = req.params.doctorUsername;
+    const friendUsername = req.params.friendUsername;
+
+    // Realizar la búsqueda de amigos en común en Neo4j
+    const commonFriendsResult = await neo4jSession.run(
+      'MATCH (doctor:User)-[:FRIENDS_WITH]->(commonFriend:User)<-[:FRIENDS_WITH]-(friend:User) ' +
+      'WHERE doctor.username = $doctorUsername AND friend.username = $friendUsername ' +
+      'RETURN commonFriend.username, commonFriend.email, commonFriend.age, commonFriend.specialty',
+      { doctorUsername, friendUsername }
+    );
+
+    const commonFriends = commonFriendsResult.records.map(record => record.toObject());
+
+    res.status(200).json({ commonFriends });
+  } catch (error) {
+    console.error('Error en la ruta /common-friends/:doctorUsername/:friendUsername:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+app.get('/get-friends/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const FriendsResult = await neo4jSession.run(
+      'MATCH (user:User {username: $username}) ' +
+      'MATCH (user)-[:FRIENDS_WITH]->(friend:User) ' +
+      'RETURN friend.username AS friendUsername, friend.photoId AS photoId',
+      { username }
+    );
+
+    const friendList = FriendsResult.records.map(record => {
+      return {
+        username: record.get('friendUsername'),
+        photoId: record.get('photoId'),
+      };
+    });
+
+    const friendsWithPhotos = await Promise.all(
+      friendList.map(async (friend) => {
+        if (friend) {
+          const { username, photoId } = friend;
+          // Utiliza la función getPhotoUrl para obtener la URL de la foto
+          //const photoUrl = await getPhotoUrl(photoId);
+          //console.log(photoUrl)
+          return {
+            username,
+            photo: await getPhotoUrl(photoId),
+          };
+        }
+
+        return null;
+      })
+    );
+
+    res.json({ friends: friendsWithPhotos });
+  } catch (error) {
+    console.error('Error al obtener la lista de amigos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
 
 // Manejo de errores
 app.use((err, req, res, next) => {
