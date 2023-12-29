@@ -12,6 +12,7 @@ import FriendList from './components/FriendsList/FriendsList';
 import PostView from './components/ViewPost/PostView';
 import ChatView from './components/ChatView/ChatView';
 import ConsultaDatos from './components/DataConsult/ConsultaDatos';
+import ProfileFriend from './components/ProfielFriend/ProfileFriend';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="/viewpost" element={<PostView />} />
           <Route path="/viewmessages" element={<ChatView />} />
           <Route path="/consultas" element={<ConsultaDatos />} />
+          <Route path="/profilefriend/:username" element={<ProfileFriend />} />
         </Route>
       </Routes>
     </BrowserRouter>
