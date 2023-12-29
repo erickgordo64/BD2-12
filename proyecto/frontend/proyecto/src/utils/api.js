@@ -14,5 +14,10 @@ export const API_ENDPOINTS = {
   GETUSERPOSTS:`${BASE_URL}/get-user-posts`,
   GETALLMESSAGES:`${BASE_URL}/get-all-messages`,
   CREATEMESSAGE:`${BASE_URL}/create-message`,
+  PATIENTBYAGE: `${BASE_URL}/total-pacientes-por-edad`,
+  PATIENTBYHABITACION: `${BASE_URL}/cantidad-pacientes-por-habitacion`,
+  PATIENTBYGENER: `${BASE_URL}/cantidad-pacientes-por-genero`,
+  TOP5MORE: `${BASE_URL}/top5-edades-mas-atendidas`,
+  TOP5LESS: `${BASE_URL}/top5-edades-menos-atendidas`,
   // Agrega más endpoints según sea necesario
 };

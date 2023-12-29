@@ -11,6 +11,7 @@ import AddFriends from './components/AddFriend/AddFriends'
 import FriendList from './components/FriendsList/FriendsList';
 import PostView from './components/ViewPost/PostView';
 import ChatView from './components/ChatView/ChatView';
+import ConsultaDatos from './components/DataConsult/ConsultaDatos';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/friendlist" element={<FriendList />} />
           <Route path="/viewpost" element={<PostView />} />
           <Route path="/viewmessages" element={<ChatView />} />
+          <Route path="/consultas" element={<ConsultaDatos />} />
         </Route>
       </Routes>
     </BrowserRouter>

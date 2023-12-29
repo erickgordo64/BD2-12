@@ -551,6 +551,171 @@ app.get('/get-all-messages/:username1/:username2', async (req, res) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+app.get('/total-pacientes-por-edad', async (req, res) => {
+  try {
+    const pediatricoCount = await getCountByAgeCategory('Pediátrico', 0, 17);
+    const medianaEdadCount = await getCountByAgeCategory('Mediana Edad', 18, 64);
+    const geriatricoCount = await getCountByAgeCategory('Geriátrico', 65, 120);
+
+    res.json({
+      pediátrico: pediatricoCount,
+      'mediana-edad': medianaEdadCount,
+      geriátrico: geriatricoCount,
+    });
+  } catch (error) {
+    console.error('Error al obtener el total de pacientes por edad:', error);
+    res.status(500).json({ error: 'Ocurrió un error al procesar la solicitud' });
+  }
+});
+
+const getCountByAgeCategory = async (category, minAge, maxAge) => {
+  const collection = mongoDb.collection('pacientes');
+  return collection.countDocuments({ edad: { $gte: minAge, $lte: maxAge } });
+};
+
+app.get('/cantidad-pacientes-por-habitacion', async (req, res) => {
+  try {
+    const habitacionesData = await getCantidadPacientesPorHabitacion();
+
+    res.json(habitacionesData);
+  } catch (error) {
+    console.error('Error al obtener la cantidad de pacientes por habitación:', error);
+    res.status(500).json({ error: 'Ocurrió un error al procesar la solicitud' });
+  }
+});
+
+const getCantidadPacientesPorHabitacion = async () => {
+  const logCollection = mongoDb.collection('loghabitacion');
+  const habitacionesCollection = mongoDb.collection('habitaciones');
+
+  // Filtrar por registros donde el status sea "Sala disponible."
+  const habitacionesOcupadas = await logCollection.find({ status: 'Sala disponible.' }).toArray();
+
+  // Inicializar el objeto para almacenar la cantidad de pacientes por habitación
+  const habitacionesData = {};
+
+  // Iterar sobre los registros de habitaciones ocupadas
+  await Promise.all(
+    habitacionesOcupadas.map(async (log) => {
+      const { idHabitacion } = log;
+
+      // Incrementar la cantidad de pacientes en la habitación actual
+      habitacionesData[idHabitacion] = (habitacionesData[idHabitacion] || 0) + 1;
+    })
+  );
+
+  // Obtener el nombre y la cantidad de pacientes para cada habitación
+  const resultados = await Promise.all(
+    Object.keys(habitacionesData).map(async (idHabitacion) => {
+      const habitacionInfo = await habitacionesCollection.findOne({ idHabitacion: parseInt(idHabitacion) });
+
+      // Obtener el nombre de la habitación o establecerlo como 'Desconocido' si no se encuentra
+      const habitacionNombre = habitacionInfo ? habitacionInfo.habitacion : 'Desconocido';
+
+      // Devolver un objeto con el nombre de la habitación y la cantidad de pacientes
+      return {
+        habitacion: habitacionNombre,
+        cantidadPacientes: habitacionesData[idHabitacion],
+      };
+    })
+  );
+
+  return resultados;
+};
+
+app.get('/cantidad-pacientes-por-genero', async (req, res) => {
+  try {
+    const generoData = await getCantidadPacientesPorGenero();
+
+    res.json(generoData);
+  } catch (error) {
+    console.error('Error al obtener la cantidad de pacientes por género:', error);
+    res.status(500).json({ error: 'Ocurrió un error al procesar la solicitud' });
+  }
+});
+
+const getCantidadPacientesPorGenero = async () => {
+  const pacientesCollection = mongoDb.collection('pacientes');
+
+  // Agregar la lógica de la consulta para obtener la cantidad de pacientes por género
+  const generoData = await pacientesCollection.aggregate([
+    {
+      $group: {
+        _id: '$genero',
+        cantidad: { $sum: 1 },
+      },
+    },
+  ]).toArray();
+
+  return generoData;
+};
+
+app.get('/top5-edades-mas-atendidas', async (req, res) => {
+  try {
+    const top5Edades = await getTop5EdadesMasAtendidas();
+
+    res.json(top5Edades);
+  } catch (error) {
+    console.error('Error al obtener las cinco edades más atendidas:', error);
+    res.status(500).json({ error: 'Ocurrió un error al procesar la solicitud' });
+  }
+});
+
+const getTop5EdadesMasAtendidas = async () => {
+  const pacientesCollection = mongoDb.collection('pacientes');
+
+  // Agregar la lógica de la consulta para identificar las cinco edades más frecuentes
+  const top5Edades = await pacientesCollection.aggregate([
+    {
+      $group: {
+        _id: '$edad',
+        cantidad: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { cantidad: -1 },
+    },
+    {
+      $limit: 5,
+    },
+  ]).toArray();
+
+  return top5Edades.map(({ _id, cantidad }) => ({ edad: _id, cantidad }));
+};
+
+
+app.get('/top5-edades-menos-atendidas', async (req, res) => {
+  try {
+    const top5Edades = await getTop5EdadesMenosAtendidas();
+
+    res.json(top5Edades);
+  } catch (error) {
+    console.error('Error al obtener las cinco edades menos atendidas:', error);
+    res.status(500).json({ error: 'Ocurrió un error al procesar la solicitud' });
+  }
+});
+
+const getTop5EdadesMenosAtendidas = async () => {
+  const pacientesCollection = mongoDb.collection('pacientes');
+
+  // Agregar la lógica de la consulta para identificar las cinco edades menos frecuentes
+  const top5Edades = await pacientesCollection.aggregate([
+    {
+      $group: {
+        _id: '$edad',
+        cantidad: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { cantidad: 1 }, // Ordenar de menor a mayor cantidad
+    },
+    {
+      $limit: 5,
+    },
+  ]).toArray();
+
+  return top5Edades.map(({ _id, cantidad }) => ({ edad: _id, cantidad }));
+};
 
 // Manejo de errores
 app.use((err, req, res, next) => {
