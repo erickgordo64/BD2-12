@@ -3,31 +3,39 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../utils/api';
-import './style.css'; // Asegúrate de usar la ruta correcta para tu archivo de estilos
+import './style.css';
 
 const Register = () => {
+  const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [age, setAge] = useState('');
   const [specialty, setSpecialty] = useState('');
-  const [password, setPassword] = useState('');
-  const [photo, setPhoto] = useState(''); // Agregado para el campo de foto
+  const [password, setEncryptedPassword] = useState('');
+  const [webpage, setWebpage] = useState('');
+  const [photo, setPhoto] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleRegister = async () => {
     try {
+      if (!fullName || !username || !email || !age || !specialty || !password) {
+        setError('Todos los campos son obligatorios.');
+        return;
+      }
+
       const response = await axios.post(API_ENDPOINTS.REGISTER, {
+        fullName,
         username,
         email,
         age,
         specialty,
         password,
-        photo, // Incluye el campo de foto en la solicitud
+        webpage,
+        photo,
       });
 
       if (response.status === 200) {
-        // Registro exitoso, redirigir a la página de inicio de sesión
         navigate('/');
       } else {
         setError('Error en el registro. Inténtalo de nuevo.');
@@ -73,11 +81,27 @@ const Register = () => {
           className="input"
         />
 
-        <label className="label">Contraseña:</label>
+        <label className="label">Nombre completo:</label>
+        <input
+          type="text"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          className="input"
+        />
+
+        <label className="label">Página web:</label>
+        <input
+          type="text"
+          value={webpage}
+          onChange={(e) => setWebpage(e.target.value)}
+          className="input"
+        />
+
+        <label className="label">Contraseña cifrada:</label>
         <input
           type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => setEncryptedPassword(e.target.value)}
           className="input"
         />
 

@@ -42,7 +42,6 @@ app.use(cors()); // Agrega CORS a todas las rutas
 // Middleware para parsear el cuerpo de la solicitud como JSON
 app.use(express.json());
 
-
 // Endpoint para iniciar sesión sin cifrado de contraseñas
 app.post('/login', async (req, res) => {
   try {
@@ -85,26 +84,59 @@ app.post('/login', async (req, res) => {
 
 // Ruta para registrar un nuevo usuario
 app.post('/register', upload.single('photo'), async (req, res) => {
-  const { username, email, age, specialty, password, photo } = req.body;
+  try {
+    const {
+      fullName,
+      username,
+      email,
+      age,
+      specialty,
+      password,
+      webpage,
+      photo,
+    } = req.body;
 
-  // Guardar la foto en MongoDB y obtener el ID generado
-  const photoId = await savePhotoToMongo(photo);
-  // Crear un nodo de usuario en Neo4j y relacionarlo con la foto almacenada en MongoDB
-  let photoIdMongo = photoId.toString()
+    // Guardar la foto en MongoDB y obtener el ID generado
+    const photoId = await savePhotoToMongo(photo);
+    // Crear un nodo de usuario en Neo4j y relacionarlo con la foto almacenada en MongoDB
+    let photoIdMongo = photoId.toString();
 
-  const resultNeo4j = await neo4jSession.run(
-    `
-    CREATE (u:User {username: $username, email: $email, age: $age, specialty: $specialty, password: $password, photoId: $photoIdMongo})
-    RETURN u
-    `,
-    { username, email, age, specialty, password, photoIdMongo }
-  );
-  const newUser = resultNeo4j.records[0]?.get('u');
+    const resultNeo4j = await neo4jSession.run(
+      `
+      CREATE (u:User {
+        fullName: $fullName,
+        username: $username,
+        email: $email,
+        age: $age,
+        specialty: $specialty,
+        password: $password,
+        webpage: $webpage,
+        photoId: $photoIdMongo
+      })
+      RETURN u
+      `,
+      {
+        fullName,
+        username,
+        email,
+        age,
+        specialty,
+        password,
+        webpage,
+        photoIdMongo,
+      }
+    );
 
-  if (newUser) {
-    res.status(200).json({ message: 'Usuario registrado exitosamente', user: newUser });
-  } else {
-    res.status(500).json({ message: 'Error al registrar usuario' });
+    const newUser = resultNeo4j.records[0]?.get('u');
+
+    if (newUser) {
+      res.status(200).json({ message: 'Usuario registrado exitosamente', user: newUser });
+    } else {
+      res.status(500).json({ message: 'Error al registrar usuario' });
+    }
+  } catch (error) {
+    console.error('Error al procesar la solicitud:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
@@ -239,7 +271,7 @@ app.post('/add-friend', async (req, res) => {
       { currentUserUsername, friendUsername }
     );
 
-    if (checkFriendshipResult.records != []) {
+    if (checkFriendshipResult.records[0]) {
       res.status(400).json({ message: 'Ya son amigos' });
       return;
     }
